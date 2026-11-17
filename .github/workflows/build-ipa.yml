@@ -1,0 +1,43 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  ipa:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "15.2"
+
+      - name: Build iOS app
+        run: |
+          xcodebuild \
+            -project IPadCalculator.xcodeproj \
+            -scheme IPadCalculator \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          APP=$(find build -name "IPadCalculator.app" -path "*iphoneos*" | head -n 1)
+          mkdir -p dist/Payload
+          cp -R "$APP" dist/Payload/
+          (cd dist && zip -r ../IPadCalculator.ipa Payload)
+          ls -lh IPadCalculator.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IPadCalculator-ipa
+          path: IPadCalculator.ipa
